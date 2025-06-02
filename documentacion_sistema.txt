@@ -1,0 +1,90 @@
+# Documentación del Sistema de Cálculo de Costos de Construcción
+Versión: 2.0
+Fecha: 2 de Junio 2025
+
+## Estructura del Sistema
+
+El sistema está compuesto por 5 archivos principales que trabajan en conjunto:
+
+1. main.py
+---------------
+- Punto de entrada principal del sistema
+- Importa y ejecuta la función main del módulo interfaz
+- Estructura simple y limpia
+
+2. interfaz.py
+---------------
+- Contiene la interfaz gráfica principal (usando tkinter)
+- Clase InterfazPrincipal con:
+  * Panel de lista de habitaciones
+  * Panel de formulario de detalles
+  * Panel de resumen
+  * Funciones para CRUD de habitaciones
+  * Gestión de materiales y sistemas de construcción
+  * Funciones de actualización de vista y cálculos
+
+3. clases.py
+---------------
+Define las clases fundamentales:
+- Material:
+  * Representa materiales de construcción
+  * Maneja precios por metro cuadrado
+  * Tipos: pisos y paredes
+
+- SistemaConstruccion:
+  * Define sistemas como mampostería, drywall, etc.
+  * Maneja factores de costo
+
+- Habitacion:
+  * Representa espacios con dimensiones
+  * Gestiona materiales asignados
+  * Calcula costos parciales
+
+- Casa:
+  * Contiene colección de habitaciones
+  * Realiza cálculos totales
+  * Genera resúmenes y estadísticas
+
+4. datos.py
+---------------
+Contiene datos y configuraciones:
+- Catálogos de materiales (pisos y paredes) con precios
+- Lista de sistemas de construcción disponibles
+- Tipos predefinidos de habitaciones
+- Configuraciones del sistema:
+  * Moneda
+  * Unidades
+  * Factores de cálculo
+- Paletas de colores para gráficos
+- Funciones de utilidad para acceso a datos
+
+5. graficos.py
+---------------
+Sistema de visualización de datos:
+- Clase DashboardPintura:
+  * Gráficos de barras para costos
+  * Gráficos circulares para distribución
+  * Comparativas de materiales
+  * Métricas y KPIs
+
+## Estado Actual
+
+El sistema tiene una estructura sólida pero hay métodos incompletos en:
+- datos.py: Faltan implementar algunas funciones de utilidad
+- interfaz.py: Algunos métodos de la interfaz necesitan completarse
+- graficos.py: Ciertos gráficos están pendientes de implementación
+
+## Próximos Pasos
+
+1. Completar funciones faltantes
+2. Implementar manejo de errores
+3. Mejorar la documentación inline
+4. Agregar pruebas unitarias
+5. Optimizar cálculos y rendimiento
+
+## Notas Técnicas
+
+- El sistema usa tkinter para la interfaz gráfica
+- Implementa patrones de diseño orientado a objetos
+- Separa claramente la lógica de negocio, datos e interfaz
+- Incluye capacidades de visualización avanzada
