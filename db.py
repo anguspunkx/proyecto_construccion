@@ -102,3 +102,17 @@ def obtener_materiales_habitacion(id_habitacion):
     datos = cursor.fetchone()
     conn.close()
     return datos
+
+def actualizar_precio_material(id_material, nuevo_precio):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE material SET precio_m2=? WHERE id=?", (nuevo_precio, id_material))
+    conn.commit()
+    conn.close()
+
+def actualizar_factor_sistema(id_sistema, nuevo_factor):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE sistema_construccion SET factor_costo=? WHERE id=?", (nuevo_factor, id_sistema))
+    conn.commit()
+    conn.close()

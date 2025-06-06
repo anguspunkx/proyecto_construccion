@@ -79,22 +79,20 @@ class Habitacion:
             return 0
         area = self.calcular_area_piso()
         return self.material_piso.calcular_costo_area(area)
-    
+
     def calcular_costo_paredes(self):
         """Calcula el costo de las paredes"""
         if not self.material_paredes:
             return 0
         area = self.calcular_area_paredes()
         return self.material_paredes.calcular_costo_area(area)
-    
+
     def calcular_costo_total(self):
         """Calcula el costo total de la habitación"""
         costo_base = self.calcular_costo_piso() + self.calcular_costo_paredes()
-        
         # Aplicar factor del sistema de construcción si existe
         if self.sistema_construccion:
             costo_base = self.sistema_construccion.aplicar_factor(costo_base)
-        
         return costo_base
     
     def obtener_resumen(self):
@@ -172,11 +170,8 @@ class Casa:
                 'habitacion_mas_cara': None,
                 'habitacion_mas_grande': None
             }
-        
-        # Encontrar habitación más cara y más grande
         habitacion_mas_cara = max(self.habitaciones, key=lambda h: h.calcular_costo_total())
         habitacion_mas_grande = max(self.habitaciones, key=lambda h: h.calcular_area_piso())
-        
         return {
             'cantidad_habitaciones': len(self.habitaciones),
             'area_total': self.calcular_area_total(),
@@ -186,7 +181,7 @@ class Casa:
             'habitacion_mas_cara': habitacion_mas_cara.nombre,
             'habitacion_mas_grande': habitacion_mas_grande.nombre
         }
-    
+
     def obtener_resumen_completo(self):
         """Obtiene un resumen completo de la casa"""
         resumen = {
@@ -195,11 +190,11 @@ class Casa:
             'habitaciones': [h.obtener_resumen() for h in self.habitaciones]
         }
         return resumen
-    
+
     def listar_habitaciones(self):
         """Lista todas las habitaciones"""
         return [h.nombre for h in self.habitaciones]
-    
+
     def __str__(self):
         stats = self.obtener_estadisticas()
         return f"{self.nombre} - {stats['cantidad_habitaciones']} habitaciones, {stats['area_total']:.1f}m², ${stats['costo_total']:,.0f}"
