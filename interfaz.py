@@ -19,6 +19,7 @@ from datos import (
     formatear_precio,
     TIPOS_HABITACION
 )
+import db  # <--- Importar el módulo de base de datos
 
 class InterfazPrincipal:
     """Interfaz gráfica principal del sistema"""
@@ -26,226 +27,369 @@ class InterfazPrincipal:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Sistema de Cálculo de Costos de Construcción")
-        self.root.geometry("1200x800")
-        self.root.configure(bg='#f0f0f0')
-        
+        self.root.geometry("1280x820")
+        self.root.configure(bg='#e9ecef')
+        self.root.minsize(1100, 700)
+
+        # Paleta de colores profesional
+        self.color_primario = "#2E86AB"
+        self.color_secundario = "#F5F6FA"
+        self.color_acento = "#4ECDC4"
+        self.color_texto = "#22223B"
+        self.color_panel = "#FFFFFF"
+
         # Datos principales
         self.casa_actual = Casa("Mi Casa")
         self.habitacion_seleccionada = None
-        
+        self.casa_id = None  # ID de la casa en la base de datos
+
         # Configurar estilo
         self.configurar_estilo()
-        
+
         # Crear interfaz
         self.crear_interfaz()
-        
+
+        # Cargar o crear casa y habitaciones desde la base de datos
+        self.cargar_o_crear_casa()
+
         # Actualizar vista inicial
         self.actualizar_lista_habitaciones()
         self.actualizar_resumen()
-    
+
     def configurar_estilo(self):
         """Configura el estilo de la interfaz"""
         style = ttk.Style()
         style.theme_use('clam')
-        
-        # Configurar colores
-        style.configure('Title.TLabel', font=('Arial', 16, 'bold'), foreground='#2E86AB')
-        style.configure('Subtitle.TLabel', font=('Arial', 12, 'bold'), foreground='#333333')
-        style.configure('Info.TLabel', font=('Arial', 10), foreground='#666666')
-        style.configure('Success.TLabel', font=('Arial', 10), foreground='#28a745')
-        style.configure('Error.TLabel', font=('Arial', 10), foreground='#dc3545')
-    
+
+        # Colores y fuentes
+        style.configure('TFrame', background=self.color_panel)
+        style.configure('Title.TLabel', font=('Segoe UI', 22, 'bold'), foreground=self.color_primario, background=self.color_secundario)
+        style.configure('Header.TLabel', font=('Segoe UI', 14, 'bold'), foreground=self.color_texto, background=self.color_panel)
+        style.configure('Subtitle.TLabel', font=('Segoe UI', 12, 'bold'), foreground=self.color_primario, background=self.color_panel)
+        style.configure('Info.TLabel', font=('Segoe UI', 10), foreground='#666', background=self.color_panel)
+        style.configure('Success.TLabel', font=('Segoe UI', 10), foreground='#28a745', background=self.color_panel)
+        style.configure('Error.TLabel', font=('Segoe UI', 10), foreground='#dc3545', background=self.color_panel)
+        style.configure('TButton', font=('Segoe UI', 11, 'bold'), padding=8, background=self.color_primario, foreground='white')
+        style.map('TButton', background=[('active', self.color_acento)])
+
     def crear_interfaz(self):
         """Crea la interfaz principal"""
+        # Cabecera destacada
+        header = ttk.Frame(self.root, style='TFrame')
+        header.pack(fill=tk.X)
+        ttk.Label(header, text="Sistema de Cálculo de Costos de Construcción", style='Title.TLabel').pack(pady=18)
+
         # Frame principal
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+        main_frame = ttk.Frame(self.root, padding="18 10 18 18", style='TFrame')
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
         # Configurar grid
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(1, weight=1)
-        
-        # Título principal
-        titulo = ttk.Label(main_frame, text="Sistema de Cálculo de Costos de Construcción", 
-                          style='Title.TLabel')
-        titulo.grid(row=0, column=0, columnspan=3, pady=(0, 20))
-        
+        main_frame.columnconfigure(0, weight=1, minsize=270)
+        main_frame.columnconfigure(1, weight=2)
+        main_frame.columnconfigure(2, weight=1, minsize=340)
+        main_frame.rowconfigure(0, weight=1)
+
         # Panel izquierdo - Lista de habitaciones
         self.crear_panel_habitaciones(main_frame)
-        
+
         # Panel central - Formulario de habitación
         self.crear_panel_formulario(main_frame)
-        
+
         # Panel derecho - Resumen y controles
         self.crear_panel_resumen(main_frame)
-    
+
     def crear_panel_habitaciones(self, parent):
         """Crea el panel de lista de habitaciones"""
-        frame = ttk.LabelFrame(parent, text="Habitaciones", padding="10")
-        frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
-        
+        frame = ttk.LabelFrame(parent, text="Habitaciones", padding="14", style='TFrame')
+        frame.grid(row=0, column=0, sticky="nsew", padx=(0, 18), pady=8)
+        frame.columnconfigure(0, weight=1)
+
         # Lista de habitaciones
-        self.lista_habitaciones = tk.Listbox(frame, width=25, height=15)
-        self.lista_habitaciones.pack(fill=tk.BOTH, expand=True)
+        self.lista_habitaciones = tk.Listbox(frame, width=25, height=18, font=('Segoe UI', 11))
+        self.lista_habitaciones.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         self.lista_habitaciones.bind('<<ListboxSelect>>', self.seleccionar_habitacion)
-        
+
         # Botones
-        btn_frame = ttk.Frame(frame)
-        btn_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        ttk.Button(btn_frame, text="Nueva Habitación", 
-                  command=self.nueva_habitacion).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(btn_frame, text="Eliminar Habitación", 
-                  command=self.eliminar_habitacion).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(btn_frame, text="Duplicar Habitación", 
-                  command=self.duplicar_habitacion).pack(fill=tk.X)
-    
+        btn_frame = ttk.Frame(frame, style='TFrame')
+        btn_frame.pack(fill=tk.X, pady=(0, 0))
+        ttk.Button(btn_frame, text="Nueva Habitación", command=self.nueva_habitacion).pack(fill=tk.X, pady=(0, 7))
+        ttk.Button(btn_frame, text="Eliminar Habitación", command=self.eliminar_habitacion).pack(fill=tk.X, pady=(0, 7))
+        ttk.Button(btn_frame, text="Duplicar Habitación", command=self.duplicar_habitacion).pack(fill=tk.X)
+
     def crear_panel_formulario(self, parent):
         """Crea el panel del formulario de habitación"""
-        frame = ttk.LabelFrame(parent, text="Detalles de Habitación", padding="10")
-        frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
+        frame = ttk.LabelFrame(parent, text="Detalles de Habitación", padding="18", style='TFrame')
+        frame.grid(row=0, column=1, sticky="nsew", padx=8, pady=8)
         frame.columnconfigure(1, weight=1)
-        
+
         # Información básica
         ttk.Label(frame, text="Información Básica", style='Subtitle.TLabel').grid(
             row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
-        
+
         # Nombre
-        ttk.Label(frame, text="Nombre:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
-        self.entry_nombre = ttk.Entry(frame, width=30)
+        ttk.Label(frame, text="Nombre:", style='Header.TLabel').grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        self.entry_nombre = ttk.Entry(frame, width=30, font=('Segoe UI', 11))
         self.entry_nombre.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+
         # Tipo predefinido
-        ttk.Label(frame, text="Tipo:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
-        self.combo_tipo = ttk.Combobox(frame, values=listar_tipos_habitacion(), state="readonly")
+        ttk.Label(frame, text="Tipo:", style='Header.TLabel').grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        self.combo_tipo = ttk.Combobox(frame, values=listar_tipos_habitacion(), state="readonly", font=('Segoe UI', 11))
         self.combo_tipo.grid(row=2, column=1, sticky=(tk.W, tk.E), pady=2)
         self.combo_tipo.bind('<<ComboboxSelected>>', self.aplicar_tipo_habitacion)
-        
+
         # Dimensiones
         ttk.Label(frame, text="Dimensiones", style='Subtitle.TLabel').grid(
             row=3, column=0, columnspan=2, sticky=tk.W, pady=(20, 10))
-        
+
         # Ancho
-        ttk.Label(frame, text="Ancho (m):").grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
-        self.entry_ancho = ttk.Entry(frame, width=30)
+        ttk.Label(frame, text="Ancho (m):", style='Header.TLabel').grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
+        self.entry_ancho = ttk.Entry(frame, width=30, font=('Segoe UI', 11))
         self.entry_ancho.grid(row=4, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+
         # Largo
-        ttk.Label(frame, text="Largo (m):").grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
-        self.entry_largo = ttk.Entry(frame, width=30)
+        ttk.Label(frame, text="Largo (m):", style='Header.TLabel').grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        self.entry_largo = ttk.Entry(frame, width=30, font=('Segoe UI', 11))
         self.entry_largo.grid(row=5, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+
         # Altura
-        ttk.Label(frame, text="Altura (m):").grid(row=6, column=0, sticky=tk.W, padx=(0, 10))
-        self.entry_altura = ttk.Entry(frame, width=30)
+        ttk.Label(frame, text="Altura (m):", style='Header.TLabel').grid(row=6, column=0, sticky=tk.W, padx=(0, 10))
+        self.entry_altura = ttk.Entry(frame, width=30, font=('Segoe UI', 11))
         self.entry_altura.grid(row=6, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+
         # Materiales
         ttk.Label(frame, text="Materiales", style='Subtitle.TLabel').grid(
             row=7, column=0, columnspan=2, sticky=tk.W, pady=(20, 10))
-        
+
         # Material piso
-        ttk.Label(frame, text="Material Piso:").grid(row=8, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(frame, text="Material Piso:", style='Header.TLabel').grid(row=8, column=0, sticky=tk.W, padx=(0, 10))
         self.combo_material_piso = ttk.Combobox(frame, values=listar_nombres_materiales_piso(), 
-                                               state="readonly")
+                                               state="readonly", font=('Segoe UI', 11))
         self.combo_material_piso.grid(row=8, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+        self.combo_material_piso.bind('<<ComboboxSelected>>', self.mostrar_precio_material_piso)
+        self.label_precio_piso = ttk.Label(frame, text="", style='Info.TLabel')
+        self.label_precio_piso.grid(row=8, column=2, sticky=tk.W, padx=(10, 0))
+
         # Material paredes
-        ttk.Label(frame, text="Material Paredes:").grid(row=9, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(frame, text="Material Paredes:", style='Header.TLabel').grid(row=9, column=0, sticky=tk.W, padx=(0, 10))
         self.combo_material_paredes = ttk.Combobox(frame, values=listar_nombres_materiales_pared(), 
-                                                  state="readonly")
+                                                  state="readonly", font=('Segoe UI', 11))
         self.combo_material_paredes.grid(row=9, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+        self.combo_material_paredes.bind('<<ComboboxSelected>>', self.mostrar_precio_material_paredes)
+        self.label_precio_paredes = ttk.Label(frame, text="", style='Info.TLabel')
+        self.label_precio_paredes.grid(row=9, column=2, sticky=tk.W, padx=(10, 0))
+
         # Sistema construcción
-        ttk.Label(frame, text="Sistema Construcción:").grid(row=10, column=0, sticky=tk.W, padx=(0, 10))
-        self.combo_sistema = ttk.Combobox(frame, values=listar_nombres_sistemas(), state="readonly")
+        ttk.Label(frame, text="Sistema Construcción:", style='Header.TLabel').grid(row=10, column=0, sticky=tk.W, padx=(0, 10))
+        self.combo_sistema = ttk.Combobox(frame, values=listar_nombres_sistemas(), state="readonly", font=('Segoe UI', 11))
         self.combo_sistema.grid(row=10, column=1, sticky=(tk.W, tk.E), pady=2)
-        
+
         # Botones de acción
-        btn_frame = ttk.Frame(frame)
+        btn_frame = ttk.Frame(frame, style='TFrame')
         btn_frame.grid(row=11, column=0, columnspan=2, pady=(20, 0))
-        
-        ttk.Button(btn_frame, text="Guardar Cambios", 
-                  command=self.guardar_habitacion).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(btn_frame, text="Limpiar Formulario", 
-                  command=self.limpiar_formulario).pack(side=tk.LEFT)
-    
+        ttk.Button(btn_frame, text="Guardar Cambios", command=self.guardar_habitacion).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(btn_frame, text="Limpiar Formulario", command=self.limpiar_formulario).pack(side=tk.LEFT)
+
     def crear_panel_resumen(self, parent):
         """Crea el panel de resumen"""
-        frame = ttk.LabelFrame(parent, text="Resumen de Proyecto", padding="10")
-        frame.grid(row=1, column=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0))
-        
+        frame = ttk.LabelFrame(parent, text="Resumen de Proyecto", padding="18", style='TFrame')
+        frame.grid(row=0, column=2, sticky="nsew", padx=(18, 0), pady=8)
+        frame.columnconfigure(0, weight=1)
+
         # Nombre del proyecto
-        ttk.Label(frame, text="Nombre del Proyecto:", style='Subtitle.TLabel').pack(anchor=tk.W)
-        
-        entrada_frame = ttk.Frame(frame)
-        entrada_frame.pack(fill=tk.X, pady=(5, 15))
-        
-        self.entry_nombre_casa = ttk.Entry(entrada_frame)
+        ttk.Label(frame, text="Nombre del Proyecto:", style='Subtitle.TLabel').pack(anchor=tk.W, pady=(0, 5))
+        entrada_frame = ttk.Frame(frame, style='TFrame')
+        entrada_frame.pack(fill=tk.X, pady=(0, 15))
+        self.entry_nombre_casa = ttk.Entry(entrada_frame, font=('Segoe UI', 11))
         self.entry_nombre_casa.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.entry_nombre_casa.insert(0, self.casa_actual.nombre)
-        
-        ttk.Button(entrada_frame, text="Cambiar", 
-                  command=self.cambiar_nombre_casa).pack(side=tk.RIGHT, padx=(5, 0))
-        
+        ttk.Button(entrada_frame, text="Cambiar", command=self.cambiar_nombre_casa).pack(side=tk.RIGHT, padx=(5, 0))
+
         # Estadísticas generales
         self.label_estadisticas = ttk.Label(frame, text="", style='Info.TLabel', justify=tk.LEFT)
         self.label_estadisticas.pack(anchor=tk.W, pady=(0, 15))
-        
+
         # Botones principales
-        ttk.Button(frame, text="Ver Dashboard", 
-                  command=self.abrir_dashboard).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(frame, text="Exportar Reporte", 
-                  command=self.exportar_reporte).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(frame, text="Nueva Casa", 
-                  command=self.nueva_casa).pack(fill=tk.X, pady=(0, 15))
-        
+        ttk.Button(frame, text="Ver Dashboard", command=self.abrir_dashboard).pack(fill=tk.X, pady=(0, 5))
+        ttk.Button(frame, text="Exportar Reporte", command=self.exportar_reporte).pack(fill=tk.X, pady=(0, 5))
+        ttk.Button(frame, text="Nueva Casa", command=self.nueva_casa).pack(fill=tk.X, pady=(0, 5))
+
         # Detalles de habitación seleccionada
         ttk.Label(frame, text="Habitación Seleccionada:", style='Subtitle.TLabel').pack(anchor=tk.W)
         self.label_detalle_habitacion = ttk.Label(frame, text="", style='Info.TLabel', justify=tk.LEFT)
         self.label_detalle_habitacion.pack(anchor=tk.W, pady=(5, 0))
     
+    def cargar_o_crear_casa(self):
+        """Carga la casa y habitaciones desde la base de datos, o crea una nueva si no existe."""
+        # Intentar cargar la primera casa existente
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nombre FROM casa ORDER BY id LIMIT 1")
+        row = cursor.fetchone()
+        if row:
+            self.casa_id = row[0]
+            self.casa_actual = Casa(row[1])
+            # Cargar habitaciones
+            habitaciones_db = db.obtener_habitaciones_por_casa(self.casa_id)
+            for h in habitaciones_db:
+                habitacion = Habitacion(h[1], h[2], h[3], h[4])
+                # Cargar materiales y sistema
+                rel = db.obtener_materiales_habitacion(h[0])
+                if rel:
+                    id_piso, id_paredes, id_sistema = rel
+                    # Buscar por id en la tabla material/sistema
+                    materiales = db.obtener_materiales()
+                    for m in materiales:
+                        if m[0] == id_piso:
+                            habitacion.material_piso = obtener_material_piso(m[1])
+                        if m[0] == id_paredes:
+                            habitacion.material_paredes = obtener_material_pared(m[1])
+                    sistemas = db.obtener_sistemas_construccion()
+                    for s in sistemas:
+                        if s[0] == id_sistema:
+                            habitacion.sistema_construccion = obtener_sistema_construccion(s[1])
+                self.casa_actual.agregar_habitacion(habitacion)
+        else:
+            # Si no hay casas, crear una nueva y guardarla
+            self.casa_id = db.guardar_casa("Mi Casa")
+            self.casa_actual = Casa("Mi Casa")
+        conn.close()
+
+    def nueva_casa(self):
+        """Crea una nueva casa y la guarda en la base de datos."""
+        respuesta = messagebox.askyesno("Nueva Casa", 
+                                       "¿Crear una nueva casa? Se perderán los datos actuales.")
+        if respuesta:
+            nombre = simpledialog.askstring("Nueva Casa", "Nombre de la nueva casa:", 
+                                          initialvalue="Mi Casa")
+            if nombre:
+                self.casa_id = db.guardar_casa(nombre)
+                self.casa_actual = Casa(nombre)
+                self.habitacion_seleccionada = None
+                self.entry_nombre_casa.delete(0, tk.END)
+                self.entry_nombre_casa.insert(0, nombre)
+                self.actualizar_lista_habitaciones()
+                self.actualizar_resumen()
+                self.limpiar_formulario()
+
     def nueva_habitacion(self):
-        """Crea una nueva habitación"""
+        """Crea una nueva habitación y la guarda en la base de datos."""
         nombre = simpledialog.askstring("Nueva Habitación", "Nombre de la habitación:")
         if nombre:
             if self.casa_actual.obtener_habitacion(nombre):
                 messagebox.showerror("Error", "Ya existe una habitación con ese nombre")
                 return
-            
             habitacion = Habitacion(nombre, 3.0, 3.0, 2.5)
+            # Guardar en base de datos
+            id_hab = db.guardar_habitacion(nombre, 3.0, 3.0, 2.5, self.casa_id)
+            # Guardar relación materiales/sistema (vacío por ahora)
+            db.guardar_habitacion_material(id_hab, None, None, None)
             self.casa_actual.agregar_habitacion(habitacion)
             self.actualizar_lista_habitaciones()
             self.actualizar_resumen()
-            
             # Seleccionar la nueva habitación
             index = len(self.casa_actual.habitaciones) - 1
             self.lista_habitaciones.selection_set(index)
             self.seleccionar_habitacion(None)
-    
+
     def eliminar_habitacion(self):
-        """Elimina la habitación seleccionada"""
+        """Elimina la habitación seleccionada de la base de datos y de la casa."""
         if not self.habitacion_seleccionada:
             messagebox.showwarning("Advertencia", "Seleccione una habitación para eliminar")
             return
-        
         respuesta = messagebox.askyesno("Confirmar", 
                                        f"¿Eliminar la habitación '{self.habitacion_seleccionada.nombre}'?")
         if respuesta:
+            # Eliminar de la base de datos
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
+            # Buscar id de la habitacion en la base de datos
+            cursor.execute("SELECT id FROM habitacion WHERE nombre = ? AND id_casa = ?", (self.habitacion_seleccionada.nombre, self.casa_id))
+            row = cursor.fetchone()
+            if row:
+                id_hab = row[0]
+                cursor.execute("DELETE FROM habitacion_material WHERE id_habitacion = ?", (id_hab,))
+                cursor.execute("DELETE FROM habitacion WHERE id = ?", (id_hab,))
+                conn.commit()
+            conn.close()
             self.casa_actual.eliminar_habitacion(self.habitacion_seleccionada.nombre)
             self.habitacion_seleccionada = None
             self.actualizar_lista_habitaciones()
             self.actualizar_resumen()
             self.limpiar_formulario()
-    
+
+    def guardar_habitacion(self):
+        """Guarda los cambios de la habitación y los sincroniza con la base de datos."""
+        if not self.habitacion_seleccionada:
+            messagebox.showwarning("Advertencia", "Seleccione una habitación para editar")
+            return
+        try:
+            nombre = self.entry_nombre.get().strip()
+            if not nombre:
+                messagebox.showerror("Error", "El nombre es obligatorio")
+                return
+            ancho = float(self.entry_ancho.get())
+            largo = float(self.entry_largo.get())
+            altura = float(self.entry_altura.get())
+            if ancho <= 0 or largo <= 0 or altura <= 0:
+                messagebox.showerror("Error", "Las dimensiones deben ser positivas")
+                return
+            # Actualizar habitación en memoria
+            self.habitacion_seleccionada.nombre = nombre
+            self.habitacion_seleccionada.ancho = ancho
+            self.habitacion_seleccionada.largo = largo
+            self.habitacion_seleccionada.altura = altura
+            material_piso = self.combo_material_piso.get()
+            if material_piso:
+                self.habitacion_seleccionada.asignar_material_piso(obtener_material_piso(material_piso))
+            material_paredes = self.combo_material_paredes.get()
+            if material_paredes:
+                self.habitacion_seleccionada.asignar_material_paredes(obtener_material_pared(material_paredes))
+            sistema = self.combo_sistema.get()
+            if sistema:
+                self.habitacion_seleccionada.asignar_sistema_construccion(obtener_sistema_construccion(sistema))
+            # Actualizar en base de datos
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
+            # Buscar id de la habitacion
+            cursor.execute("SELECT id FROM habitacion WHERE nombre = ? AND id_casa = ?", (nombre, self.casa_id))
+            row = cursor.fetchone()
+            if row:
+                id_hab = row[0]
+                cursor.execute("UPDATE habitacion SET ancho=?, largo=?, altura=? WHERE id=?", (ancho, largo, altura, id_hab))
+                # Buscar ids de materiales y sistema
+                id_piso = id_paredes = id_sistema = None
+                if material_piso:
+                    cursor.execute("SELECT id FROM material WHERE nombre=?", (material_piso,))
+                    r = cursor.fetchone()
+                    if r: id_piso = r[0]
+                if material_paredes:
+                    cursor.execute("SELECT id FROM material WHERE nombre=?", (material_paredes,))
+                    r = cursor.fetchone()
+                    if r: id_paredes = r[0]
+                if sistema:
+                    cursor.execute("SELECT id FROM sistema_construccion WHERE nombre=?", (sistema,))
+                    r = cursor.fetchone()
+                    if r: id_sistema = r[0]
+                # Actualizar o insertar relación
+                cursor.execute("SELECT id FROM habitacion_material WHERE id_habitacion=?", (id_hab,))
+                if cursor.fetchone():
+                    cursor.execute("UPDATE habitacion_material SET id_material_piso=?, id_material_paredes=?, id_sistema_construccion=? WHERE id_habitacion=?", (id_piso, id_paredes, id_sistema, id_hab))
+                else:
+                    db.guardar_habitacion_material(id_hab, id_piso, id_paredes, id_sistema)
+                conn.commit()
+            conn.close()
+            self.actualizar_lista_habitaciones()
+            self.actualizar_resumen()
+            self.actualizar_detalle_habitacion()
+            messagebox.showinfo("Éxito", "Habitación guardada correctamente")
+        except ValueError:
+            messagebox.showerror("Error", "Las dimensiones deben ser números válidos")
+
     def duplicar_habitacion(self):
-        """Duplica la habitación seleccionada"""
+        """Duplica la habitación seleccionada y la guarda en la base de datos."""
         if not self.habitacion_seleccionada:
             messagebox.showwarning("Advertencia", "Seleccione una habitación para duplicar")
             return
-        
         nombre = simpledialog.askstring("Duplicar Habitación", 
                                        "Nombre para la habitación duplicada:",
                                        initialvalue=f"{self.habitacion_seleccionada.nombre} - Copia")
@@ -253,17 +397,33 @@ class InterfazPrincipal:
             if self.casa_actual.obtener_habitacion(nombre):
                 messagebox.showerror("Error", "Ya existe una habitación con ese nombre")
                 return
-            
-            # Crear nueva habitación con los mismos datos
             nueva = Habitacion(nombre, 
                              self.habitacion_seleccionada.ancho,
                              self.habitacion_seleccionada.largo,
                              self.habitacion_seleccionada.altura)
-            
             nueva.material_piso = self.habitacion_seleccionada.material_piso
             nueva.material_paredes = self.habitacion_seleccionada.material_paredes
             nueva.sistema_construccion = self.habitacion_seleccionada.sistema_construccion
-            
+            # Guardar en base de datos
+            id_hab = db.guardar_habitacion(nombre, nueva.ancho, nueva.largo, nueva.altura, self.casa_id)
+            # Buscar ids de materiales y sistema
+            conn = db.get_db_connection()
+            cursor = conn.cursor()
+            id_piso = id_paredes = id_sistema = None
+            if nueva.material_piso:
+                cursor.execute("SELECT id FROM material WHERE nombre=?", (nueva.material_piso.nombre,))
+                r = cursor.fetchone()
+                if r: id_piso = r[0]
+            if nueva.material_paredes:
+                cursor.execute("SELECT id FROM material WHERE nombre=?", (nueva.material_paredes.nombre,))
+                r = cursor.fetchone()
+                if r: id_paredes = r[0]
+            if nueva.sistema_construccion:
+                cursor.execute("SELECT id FROM sistema_construccion WHERE nombre=?", (nueva.sistema_construccion.nombre,))
+                r = cursor.fetchone()
+                if r: id_sistema = r[0]
+            db.guardar_habitacion_material(id_hab, id_piso, id_paredes, id_sistema)
+            conn.close()
             self.casa_actual.agregar_habitacion(nueva)
             self.actualizar_lista_habitaciones()
             self.actualizar_resumen()
@@ -328,56 +488,6 @@ class InterfazPrincipal:
             self.entry_altura.delete(0, tk.END)
             self.entry_altura.insert(0, str(dimensiones["altura"]))
     
-    def guardar_habitacion(self):
-        """Guarda los cambios de la habitación"""
-        if not self.habitacion_seleccionada:
-            messagebox.showwarning("Advertencia", "Seleccione una habitación para editar")
-            return
-        
-        try:
-            # Validar datos
-            nombre = self.entry_nombre.get().strip()
-            if not nombre:
-                messagebox.showerror("Error", "El nombre es obligatorio")
-                return
-            
-            ancho = float(self.entry_ancho.get())
-            largo = float(self.entry_largo.get())
-            altura = float(self.entry_altura.get())
-            
-            if ancho <= 0 or largo <= 0 or altura <= 0:
-                messagebox.showerror("Error", "Las dimensiones deben ser positivas")
-                return
-            
-            # Actualizar habitación
-            self.habitacion_seleccionada.nombre = nombre
-            self.habitacion_seleccionada.ancho = ancho
-            self.habitacion_seleccionada.largo = largo
-            self.habitacion_seleccionada.altura = altura
-            
-            # Materiales
-            material_piso = self.combo_material_piso.get()
-            if material_piso:
-                self.habitacion_seleccionada.asignar_material_piso(obtener_material_piso(material_piso))
-            
-            material_paredes = self.combo_material_paredes.get()
-            if material_paredes:
-                self.habitacion_seleccionada.asignar_material_paredes(obtener_material_pared(material_paredes))
-            
-            sistema = self.combo_sistema.get()
-            if sistema:
-                self.habitacion_seleccionada.asignar_sistema_construccion(obtener_sistema_construccion(sistema))
-            
-            # Actualizar interfaz
-            self.actualizar_lista_habitaciones()
-            self.actualizar_resumen()
-            self.actualizar_detalle_habitacion()
-            
-            messagebox.showinfo("Éxito", "Habitación guardada correctamente")
-            
-        except ValueError:
-            messagebox.showerror("Error", "Las dimensiones deben ser números válidos")
-    
     def limpiar_formulario(self):
         """Limpia el formulario"""
         self.entry_nombre.delete(0, tk.END)
@@ -397,70 +507,6 @@ class InterfazPrincipal:
             self.actualizar_resumen()
             messagebox.showinfo("Éxito", "Nombre de proyecto actualizado")
     
-    def nueva_casa(self):
-        """Crea una nueva casa"""
-        respuesta = messagebox.askyesno("Nueva Casa", 
-                                       "¿Crear una nueva casa? Se perderán los datos actuales.")
-        if respuesta:
-            nombre = simpledialog.askstring("Nueva Casa", "Nombre de la nueva casa:", 
-                                          initialvalue="Mi Casa")
-            if nombre:
-                self.casa_actual = Casa(nombre)
-                self.habitacion_seleccionada = None
-                self.entry_nombre_casa.delete(0, tk.END)
-                self.entry_nombre_casa.insert(0, nombre)
-                self.actualizar_lista_habitaciones()
-                self.actualizar_resumen()
-                self.limpiar_formulario()
-    
-    def actualizar_lista_habitaciones(self):
-        """Actualiza la lista de habitaciones"""
-        self.lista_habitaciones.delete(0, tk.END)
-        for habitacion in self.casa_actual.habitaciones:
-            self.lista_habitaciones.insert(tk.END, str(habitacion))
-    
-    def actualizar_resumen(self):
-        """Actualiza el resumen del proyecto"""
-        stats = self.casa_actual.obtener_estadisticas()
-        
-        texto = f"""Habitaciones: {stats['cantidad_habitaciones']}
-Área Total: {stats['area_total']:.1f} m²
-Volumen Total: {stats['volumen_total']:.1f} m³
-Costo Total: {formatear_precio(stats['costo_total'])}
-Costo por m²: {formatear_precio(stats['costo_por_m2'])}"""
-        
-        if stats['cantidad_habitaciones'] > 0:
-            texto += f"""
-
-Habitación más cara: {stats['habitacion_mas_cara']}
-Habitación más grande: {stats['habitacion_mas_grande']}"""
-        
-        self.label_estadisticas.config(text=texto)
-    
-    def actualizar_detalle_habitacion(self):
-        """Actualiza los detalles de la habitación seleccionada"""
-        if not self.habitacion_seleccionada:
-            self.label_detalle_habitacion.config(text="Ninguna habitación seleccionada")
-            return
-        
-        resumen = self.habitacion_seleccionada.obtener_resumen()
-        
-        texto = f"""Nombre: {resumen['nombre']}
-Dimensiones: {resumen['dimensiones']}
-Área Piso: {resumen['area_piso']:.1f} m²
-Área Paredes: {resumen['area_paredes']:.1f} m²
-Volumen: {resumen['volumen']:.1f} m³
-
-Material Piso: {resumen['material_piso']}
-Material Paredes: {resumen['material_paredes']}
-Sistema: {resumen['sistema']}
-
-Costo Piso: {formatear_precio(resumen['costo_piso'])}
-Costo Paredes: {formatear_precio(resumen['costo_paredes'])}
-Costo Total: {formatear_precio(resumen['costo_total'])}"""
-        
-        self.label_detalle_habitacion.config(text=texto)
-    
     def abrir_dashboard(self):
         """Abre el dashboard de gráficos"""
         if not self.casa_actual.habitaciones:
@@ -478,6 +524,38 @@ Costo Total: {formatear_precio(resumen['costo_total'])}"""
         """Exporta un reporte del proyecto"""
         messagebox.showinfo("Funcionalidad", "Función de exportar reporte en desarrollo")
     
+    def mostrar_precio_material_piso(self, event=None):
+        nombre = self.combo_material_piso.get()
+        material = obtener_material_piso(nombre)
+        if hasattr(self, 'label_precio_piso'):
+            if material:
+                self.label_precio_piso.config(text=f"{material.precio_m2:,.0f} $/m²")
+            else:
+                self.label_precio_piso.config(text="")
+
+    def mostrar_precio_material_paredes(self, event=None):
+        nombre = self.combo_material_paredes.get()
+        material = obtener_material_pared(nombre)
+        if hasattr(self, 'label_precio_paredes'):
+            if material:
+                self.label_precio_paredes.config(text=f"{material.precio_m2:,.0f} $/m²")
+            else:
+                self.label_precio_paredes.config(text="")
+    
+    def actualizar_lista_habitaciones(self):
+        """Actualiza la lista de habitaciones en la interfaz"""
+        if hasattr(self, 'lista_habitaciones'):
+            self.lista_habitaciones.delete(0, 'end')
+            for habitacion in self.casa_actual.habitaciones:
+                self.lista_habitaciones.insert('end', str(habitacion))
+
+    def actualizar_resumen(self):
+        """Actualiza el resumen del proyecto en la interfaz"""
+        if hasattr(self, 'label_estadisticas'):
+            stats = self.casa_actual.obtener_estadisticas() if hasattr(self.casa_actual, 'obtener_estadisticas') else {}
+            texto = f"Habitaciones: {stats.get('cantidad_habitaciones', 0)}\nÁrea Total: {stats.get('area_total', 0):.1f} m²\nVolumen Total: {stats.get('volumen_total', 0):.1f} m³\nCosto Total: {formatear_precio(stats.get('costo_total', 0))}\nCosto por m²: {formatear_precio(stats.get('costo_por_m2', 0))}"
+            self.label_estadisticas.config(text=texto)
+
     def ejecutar(self):
         """Ejecuta la interfaz"""
         self.root.mainloop()
